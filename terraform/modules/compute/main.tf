@@ -1,4 +1,4 @@
-resource "cloudstack_instance" "rancher" {
+resource "cloudstack_instance" "vm" {
   for_each         = var.instances
   name             = each.key
   service_offering = each.value.service_offering
@@ -31,30 +31,30 @@ resource "cloudstack_disk" "data" {
   disk_offering      = "Custom Disk"
   zone               = var.zone
   size               = each.value.disk.size
-  virtual_machine_id = cloudstack_instance.rancher[each.value.vm_name].id
+  virtual_machine_id = cloudstack_instance.vm[each.value.vm_name].id
   attach             = true
 }
 
-resource "cloudstack_ipaddress" "rancher" {
+resource "cloudstack_ipaddress" "vm" {
   for_each   = var.nat_instances
   zone       = var.zone
   network_id = var.network_id
 
   tags = {
-    cloud-description = cloudstack_instance.rancher[each.key].name
+    cloud-description = cloudstack_instance.vm[each.key].name
   }
 }
 
-resource "cloudstack_static_nat" "rancher" {
+resource "cloudstack_static_nat" "vm" {
   for_each           = var.nat_instances
-  ip_address_id      = cloudstack_ipaddress.rancher[each.key].id
-  virtual_machine_id = cloudstack_instance.rancher[each.key].id
+  ip_address_id      = cloudstack_ipaddress.vm[each.key].id
+  virtual_machine_id = cloudstack_instance.vm[each.key].id
 }
 
-resource "cloudstack_firewall" "rancher" {
+resource "cloudstack_firewall" "vm" {
   for_each = var.firewall_rules
 
-  ip_address_id = cloudstack_ipaddress.rancher[each.key].id
+  ip_address_id = cloudstack_ipaddress.vm[each.key].id
 
   rule {
     cidr_list = each.value.cidr_list
