@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Install misc commands
-aqua install --config .devcontainer/host-setup/aqua.yaml
+aqua install --config .devcontainer/ansible/aqua.yaml
 
 # Enable ansible command completion
 python_venv='/app/.venv'
