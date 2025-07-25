@@ -1,0 +1,51 @@
+---
+name: run_ansible_playbook_ci
+
+on:
+  push:
+    paths:
+      - .github/workflows/run_ansible_playbook_ci.yml
+      - ansible/**
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  run_ansible_lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Display workflow runtime information
+        run: |
+          echo Workflow: ${{ github.workflow }}
+          echo Branch: ${{ github.ref }}
+          echo Tag: ${{ github.ref_name }}
+          echo Commit: ${{ github.sha }}
+
+      - name: Install python with uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: 0.7.21
+          python-version: 3.13.5
+
+      - name: Set up ansible environment
+        working-directory: .devcontainer/ansible
+        run: uv python install && uv sync --frozen
+
+      - name: Create vault password file
+        working-directory: ansible
+        run: echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > .vault_password_file
+
+      - name: Lint playbook files
+        working-directory: ansible
+        run: |
+          source ../.devcontainer/ansible/.venv/bin/activate
+          ansible-lint playbooks/site.yml
