@@ -16,6 +16,14 @@
   ansible.builtin.set_fact:
     common_disk_paths: "{{ common_data_disks | map(attribute='path') | map('regex_replace', '^', '/dev/disk/by-path/') | list }}"
 
+- name: Rescan all SCSI hosts
+  ansible.builtin.shell: |
+    set -o pipefail
+    for host in /sys/class/scsi_host/host*; do
+      echo "- - -" | tee $host/scan
+    done
+  changed_when: false
+
 - name: Get data disk path information
   ansible.builtin.stat:
     path: "{{ path }}"
@@ -42,15 +50,6 @@
     is_missing_disk_exists: "{{ (data_disk_devices | difference(ansible_devices.keys() | list)) | length > 0 }}"
   check_mode: true
 
-# - name: Rescan all SCSI hosts
-#   ansible.builtin.shell: |
-#     set -o pipefail
-#     for host in /sys/class/scsi_host/host*; do
-#       echo "- - -" | tee $host/scan
-#     done
-#   when: is_missing_disk_exists
-#   changed_when: true
-
 - name: Ensure volume groups are created
   community.general.lvg:
     vg: vg_data
@@ -70,9 +69,24 @@
     dev: /dev/mapper/vg_data-lv_data
     state: present
 
+- name: Get filesystem UUID
+  ansible.builtin.command:
+    cmd: blkid -s UUID -o value /dev/mapper/vg_data-lv_data
+  register: fs_uuid_result
+  changed_when: false
+
+- name: Set filesystem UUID fact
+  ansible.builtin.set_fact:
+    common_data_disks_fs_uuid: "{{ fs_uuid_result.stdout.strip() }}"
+
+- name: Show filesystem UUID
+  ansible.builtin.debug:
+    msg: "common_data_disks_fs_uuid: {{ common_data_disks_fs_uuid }}"
+
 - name: Mount the lv
   ansible.posix.mount:
-    src: /dev/mapper/vg_data-lv_data
+    src: UUID={{ common_data_disks_fs_uuid }}
     path: /data
     fstype: xfs
     state: mounted
+  when: common_data_disks_fs_uuid is defined and common_data_disks_fs_uuid != ''
