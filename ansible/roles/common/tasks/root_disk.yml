@@ -8,13 +8,31 @@
   loop_control:
     loop_var: package
 
+- name: Show root disk configuration
+  ansible.builtin.debug:
+    msg: "path: {{ common_root_disk.path }}, partition: {{ common_root_disk.partition }}"
+
+- name: Get root disk path information
+  ansible.builtin.stat:
+    path: /dev/disk/by-path/{{ common_root_disk.path }}
+    follow: false
+  register: disk_path_info
+
+- name: Set root disk device from path
+  ansible.builtin.set_fact:
+    root_disk_device: "/dev/{{ disk_path_info.stat.lnk_target | basename }}"
+
+- name: Show root disk device
+  ansible.builtin.debug:
+    msg: "root disk device: {{ root_disk_device }}"
+
 - name: Get root disk and partition size info
-  ansible.builtin.command: lsblk -b -n -o NAME,SIZE {{ common_root_disk.device }}
+  ansible.builtin.command: lsblk -b -n -o NAME,SIZE {{ root_disk_device }}
   register: lsblk_output
   changed_when: false
   check_mode: false
 
-- name: Parse root disk and partition sizes
+- name: Parse root disk and partition size
   ansible.builtin.set_fact:
     disk_size: "{{ lsblk_output.stdout_lines[0].split()[1] }}"
     partition_size: "{{ lsblk_output.stdout_lines[1].split()[1] }}"
@@ -27,9 +45,13 @@
   ansible.builtin.set_fact:
     extention_required: "{{ diff_size | int > 1073741824 }}"
 
+- name: Show disk and partition sizes, and if extention is required
+  ansible.builtin.debug:
+    msg: "disk: {{ disk_size }}, partition: {{ partition_size }}, diff: {{ diff_size }}, extention required: {{ extention_required }}"
+
 - name: Ensure the root disk partition is extended
   ansible.builtin.command:
-    cmd: growpart {{ common_root_disk.device }} {{ common_root_disk.partition }}
+    cmd: growpart {{ root_disk_device }} {{ common_root_disk.partition }}
   register: growpart_result
   when: extention_required
   changed_when: "'CHANGED:' in growpart_result.stdout"
@@ -37,7 +59,7 @@
 
 - name: Ensure the root disk filesystem is extended
   community.general.filesystem:
-    dev: "{{ common_root_disk.device }}{{ common_root_disk.partition }}"
+    dev: "{{ root_disk_device }}{{ common_root_disk.partition }}"
     fstype: xfs
     resizefs: true
     state: present

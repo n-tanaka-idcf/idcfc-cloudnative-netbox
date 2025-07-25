@@ -12,6 +12,6 @@
 #   when: common_data_disks is defined
 #   tags: setup_common_data_disk
 
-- name: Setup misc commands
-  ansible.builtin.import_tasks: misc_commands.yml
-  tags: common_misc_commands
+# - name: Setup misc commands
+#   ansible.builtin.import_tasks: misc_commands.yml
+#   tags: common_misc_commands
