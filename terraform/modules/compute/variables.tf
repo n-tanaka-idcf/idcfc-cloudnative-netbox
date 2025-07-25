@@ -19,22 +19,27 @@ variable "nat_instances" {
 }
 
 variable "zone" {
-  type = string
+  description = "CloudStack zone name or ID"
+  type        = string
 }
 
 variable "network_id" {
-  type = string
+  description = "Network ID to attach instances to"
+  type        = string
 }
 
 variable "keypair" {
-  type = string
+  description = "SSH keypair name for instance access"
+  type        = string
 }
 
 variable "template" {
-  type = string
+  description = "Template name or ID for VM creation"
+  type        = string
 }
 
 variable "firewall_rules" {
+  description = "Map of firewall rules to apply to each instance with NAT"
   type = map(object({
     cidr_list = list(string)
     protocol  = string
