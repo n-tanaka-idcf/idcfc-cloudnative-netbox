@@ -2,7 +2,3 @@
 rancher_k8s:
   role: all
   disabled_firewalld: true
-
-rancher_k8s_data_disks:
-  - /dev/sdb
-  - /dev/sdc

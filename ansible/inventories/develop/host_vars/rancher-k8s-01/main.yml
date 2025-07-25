@@ -1,0 +1,10 @@
+---
+common_root_disk:
+  path: pci-0000:00:10.0-scsi-0:0:0:0
+  partition: 1
+
+common_data_disks:
+  - path: pci-0000:00:10.0-scsi-0:0:1:0
+  - path: pci-0000:00:10.0-scsi-0:0:2:0
+
+common_data_disks_lv_size: 199.9g

@@ -1,0 +1,78 @@
+---
+- name: Ensure required OS packages are installed
+  ansible.builtin.dnf:
+    name: "{{ package }}"
+    state: present
+  loop:
+    - lvm2-2.03.28-6.el9
+  loop_control:
+    loop_var: package
+
+- name: Show data disk configuration
+  ansible.builtin.debug:
+    msg: "paths: {{ common_data_disks | map(attribute='path') | list }}"
+
+- name: Get data disk paths information
+  ansible.builtin.set_fact:
+    common_disk_paths: "{{ common_data_disks | map(attribute='path') | map('regex_replace', '^', '/dev/disk/by-path/') | list }}"
+
+- name: Get data disk path information
+  ansible.builtin.stat:
+    path: "{{ path }}"
+    follow: false
+  loop: "{{ common_disk_paths }}"
+  loop_control:
+    loop_var: path
+  register: disk_path_info
+
+- name: Set data disk devices from paths
+  ansible.builtin.set_fact:
+    data_disk_devices: "{{ disk_path_info.results | map(attribute='stat.lnk_target') | map('basename') | list }}"
+
+- name: Add '/dev' prefix to data disk devices
+  ansible.builtin.set_fact:
+    data_disk_devices: "{{ data_disk_devices | map('regex_replace', '^', '/dev/') | list }}"
+
+- name: Show data disk devices
+  ansible.builtin.debug:
+    msg: "data disk devices: {{ data_disk_devices }}"
+
+- name: Check if any of the specified disks are missing
+  ansible.builtin.set_fact:
+    is_missing_disk_exists: "{{ (data_disk_devices | difference(ansible_devices.keys() | list)) | length > 0 }}"
+  check_mode: true
+
+# - name: Rescan all SCSI hosts
+#   ansible.builtin.shell: |
+#     set -o pipefail
+#     for host in /sys/class/scsi_host/host*; do
+#       echo "- - -" | tee $host/scan
+#     done
+#   when: is_missing_disk_exists
+#   changed_when: true
+
+- name: Ensure volume groups are created
+  community.general.lvg:
+    vg: vg_data
+    pvs: "{{ data_disk_devices }}"
+    state: present
+
+- name: Encure the logical volume is created
+  community.general.lvol:
+    lv: lv_data
+    vg: vg_data
+    size: "{{ common_data_disks_lv_size }}"
+    state: present
+
+- name: Format data disks
+  community.general.filesystem:
+    fstype: xfs
+    dev: /dev/mapper/vg_data-lv_data
+    state: present
+
+- name: Mount the lv
+  ansible.posix.mount:
+    src: /dev/mapper/vg_data-lv_data
+    path: /data
+    fstype: xfs
+    state: mounted

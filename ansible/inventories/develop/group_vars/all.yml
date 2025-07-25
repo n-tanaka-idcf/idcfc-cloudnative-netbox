@@ -1,7 +1,3 @@
 ---
 common_os_packages:
   updates: false
-
-common_root_disk:
-  device: /dev/sda
-  partition: 1
