@@ -1,6 +1,15 @@
-output "access_ip_address_rancher_misc_01" {
-  value = module.compute.ip_addresses["rancher-misc-01"]
+output "compute_instances" {
+  value = module.compute.instances
 }
-# output "access_ip_address_rancher_server_01" {
-#   value = module.compute.ip_addresses["rancher-server-01"]
-# }
+
+output "compute_disks" {
+  value = module.compute.disks
+}
+
+output "compute_ip_addresses" {
+  value = module.compute.ip_addresses
+}
+
+output "compute_fw_rules" {
+  value = module.compute.fw_rules
+}
